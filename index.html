@@ -1,0 +1,398 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TazzyLab — программа, которая делает за конструктора рутину в SolidWorks</title>
+<meta name="description" content="Чертежи по ЕСКД, PDF и STEP проекта, развёртки DXF на лазер, приём чужих моделей — пять кнопок. 14 дней бесплатно, дальше 2 990 ₽ в год.">
+<link rel="icon" type="image/png" href="img/favicon.png">
+<style>
+  :root{
+    --bg:#0a0f1c; --bg2:#070b14; --card:#121b30; --line:#233150;
+    --txt:#e9eef6; --mut:#8fa2bd; --acc:#4f9dff; --yellow:#f2b632; --yellow-d:#ffd873;
+  }
+  *{margin:0;padding:0;box-sizing:border-box;}
+  html{scroll-behavior:smooth;}
+  body{font-family:'Segoe UI',system-ui,-apple-system,sans-serif;color:var(--txt);
+       line-height:1.6;background-color:var(--bg);
+       /* чертёжная сетка: мелкая клетка 24 px и крупная 120 px, светлые линии на тёмном */
+       background-image:
+         linear-gradient(rgba(233,238,246,.05) 1px,transparent 1px),
+         linear-gradient(90deg,rgba(233,238,246,.05) 1px,transparent 1px),
+         linear-gradient(rgba(233,238,246,.035) 1px,transparent 1px),
+         linear-gradient(90deg,rgba(233,238,246,.035) 1px,transparent 1px);
+       background-size:120px 120px,120px 120px,24px 24px,24px 24px;}
+  .wrap{max-width:1080px;margin:0 auto;padding:0 22px;}
+  section{padding:76px 0;}
+  h2{font-size:clamp(26px,4vw,40px);margin-bottom:14px;line-height:1.2;}
+  .sub{color:var(--mut);font-size:clamp(15px,1.8vw,19px);max-width:60ch;}
+  .mark{background:linear-gradient(transparent 62%,rgba(242,182,50,.4) 62%);}
+
+  /* ШАПКА */
+  header{padding:18px 0;}
+  header .wrap{display:flex;align-items:center;justify-content:space-between;}
+  .brand{display:flex;align-items:center;gap:12px;font-weight:800;font-size:20px;
+         color:var(--txt);text-decoration:none;}
+  .brand img{height:44px;border-radius:10px;}
+  .btn{display:inline-block;background:var(--yellow);color:#16213e;
+       text-decoration:none;font-weight:700;border-radius:12px;transition:.2s;}
+  .btn:hover{transform:translateY(-2px);box-shadow:0 10px 26px rgba(242,182,50,.35);}
+  .btn.small{padding:9px 18px;font-size:14.5px;}
+  .btn.big{padding:17px 36px;font-size:17px;margin-top:26px;}
+
+  /* ПЕРВЫЙ ЭКРАН */
+  .hero{padding:40px 0 10px;display:grid;grid-template-columns:1.1fr 1fr;
+        gap:20px;align-items:center;}
+  .hero h1{font-size:clamp(32px,4.8vw,54px);line-height:1.13;margin-bottom:18px;}
+  .note{color:var(--mut);font-size:13.5px;margin-top:12px;}
+
+  /* маскот: у картинки теперь настоящий прозрачный фон (вырезан из PNG),
+     тут только лёгкое свечение под ней для глубины — не маскировка */
+  .mascot-wrap{position:relative;display:flex;justify-content:center;}
+  .mascot-wrap::before{content:"";position:absolute;inset:14%;
+    background:radial-gradient(circle,rgba(79,157,255,.22),transparent 70%);
+    filter:blur(30px);z-index:0;}
+  .mascot-wrap img{position:relative;z-index:1;width:100%;max-width:440px;}
+
+  /* ОКНО TAZZYLAB (воспроизведение интерфейса программы) */
+  .showcase{padding:20px 0 76px;text-align:center;}
+  .win{max-width:430px;margin:0 auto;text-align:left;background:#0d1522;
+       border:1px solid #24344e;border-radius:10px;overflow:hidden;
+       box-shadow:0 30px 80px rgba(0,0,0,.5);font-size:13px;color:#e9eef6;}
+  .win-bar{background:#f3f3f3;color:#222;padding:7px 12px;font-size:12px;
+           display:flex;justify-content:space-between;}
+  .win-bar span:last-child{letter-spacing:10px;color:#555;}
+  .win-head{text-align:center;padding:14px 0 10px;}
+  .win-head b{color:#4f9dff;font-size:22px;display:block;}
+  .win-head small{color:#8fa2bd;font-size:12px;}
+  .win-btn{background:#121e30;border-top:1px solid #24344e;padding:11px 18px;}
+  .win-btn b{display:block;font-size:13.5px;letter-spacing:.02em;}
+  .win-btn span{font-size:12.5px;color:#c9d3e2;}
+  .win-status{color:#5fd68a;font-size:12px;padding:8px 18px;border-top:1px solid #24344e;}
+  .win-log{background:#050810;color:#c8cfd9;font-family:Consolas,monospace;
+           font-size:11.5px;line-height:1.55;padding:10px 14px;white-space:pre;overflow:hidden;}
+  .win-foot{padding:10px 18px;border-top:1px solid #24344e;}
+  .win-foot span{display:inline-block;border:1px solid #4f9dff;border-radius:4px;
+                 padding:5px 14px;font-size:12px;}
+  .caption{color:var(--mut);font-size:14px;margin-top:16px;}
+
+  /* КАРТОЧКИ */
+  .band{background:var(--bg2);border-top:1px solid var(--line);border-bottom:1px solid var(--line);}
+  .cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));
+         gap:18px;margin-top:34px;}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:28px;}
+  .card .num{font-size:42px;font-weight:800;display:inline-block;line-height:1.1;
+             background:linear-gradient(transparent 60%,rgba(242,182,50,.45) 60%);}
+  .card h3{font-size:18px;margin:10px 0 8px;}
+  .card p{color:var(--mut);font-size:14.5px;}
+
+  /* ЧТО ДЕЛАЕТ */
+  .tool{display:grid;grid-template-columns:1.25fr 1fr;gap:30px;align-items:center;
+        background:var(--card);border:1px solid var(--line);border-radius:18px;padding:32px;
+        margin-top:20px;}
+  .tool h3{font-size:22px;margin-bottom:8px;}
+  .tool p{color:var(--mut);font-size:15.5px;}
+  .metric{display:inline-block;margin-top:14px;padding:6px 14px;border-radius:8px;
+          background:rgba(242,182,50,.14);border-left:4px solid var(--yellow);
+          font-weight:700;font-size:14.5px;color:var(--yellow-d);}
+  .visual{display:flex;flex-direction:column;align-items:center;}
+  .sheet{width:100%;max-width:220px;height:auto;border-radius:6px;
+         box-shadow:0 14px 34px rgba(0,0,0,.35);}
+  .files{width:100%;background:#0a1120;border:1px solid var(--line);border-radius:12px;
+         padding:14px 16px;font-family:Consolas,monospace;font-size:12.5px;line-height:1.8;
+         color:#c8cfd9;}
+  .files .dir{color:var(--yellow-d);font-weight:700;}
+  .vcap{color:var(--mut);font-size:12.5px;margin-top:10px;}
+
+  /* ПОДАРОК: набор крепежа по ГОСТ */
+  .giftbox{background:var(--card);border:1px solid var(--line);border-radius:18px;
+           padding:36px;margin-top:20px;display:grid;grid-template-columns:1fr auto;
+           gap:24px;align-items:center;}
+  .giftbox h3{font-size:20px;margin-bottom:8px;}
+  .giftbox p{color:var(--mut);font-size:15px;max-width:56ch;}
+  .fine{color:var(--mut);font-size:12.5px;}
+  .fine a{color:var(--yellow);text-decoration:none;}
+  .fine a:hover{text-decoration:underline;}
+  .giftbox .fine{color:var(--mut);font-size:12.5px;margin-top:10px;}
+
+  /* ПРОСТО РАБОТАЕТ */
+  .simple ul{list-style:none;margin-top:24px;columns:2;column-gap:40px;}
+  .simple li{padding:9px 0;font-size:16px;break-inside:avoid;}
+  .simple li::before{content:"✓ ";color:var(--yellow-d);font-weight:800;}
+  .req{margin-top:22px;color:var(--mut);font-size:14.5px;}
+
+  /* ЦЕНА */
+  .pricebox{background:linear-gradient(160deg,var(--card),#0d1a33);
+            border:1px solid var(--yellow);border-radius:22px;padding:44px;
+            text-align:center;margin-top:30px;box-shadow:0 20px 60px rgba(0,0,0,.35);}
+  .price{font-size:clamp(52px,9vw,92px);font-weight:800;line-height:1.1;}
+  .price small{font-size:.3em;color:var(--mut);font-weight:400;}
+  .pricebox ul{list-style:none;margin:22px auto 0;max-width:440px;text-align:left;}
+  .pricebox li{padding:9px 0;border-bottom:1px solid var(--line);font-size:16px;}
+  .pricebox li:last-child{border:none;}
+  .pricebox li::before{content:"✓ ";color:var(--yellow-d);font-weight:800;}
+
+  /* ФИНАЛ */
+  .final .wrap{display:grid;grid-template-columns:1fr 300px;gap:40px;align-items:center;}
+
+  /* ПОДВАЛ */
+  footer{background:var(--bg2);color:#dfe6f1;padding:40px 0;border-top:1px solid var(--line);}
+  footer .wrap{display:flex;align-items:center;gap:18px;flex-wrap:wrap;justify-content:space-between;}
+  footer img{height:56px;border-radius:12px;}
+  footer p{color:#9fb0c9;font-size:13.5px;}
+  footer a{color:var(--yellow);text-decoration:none;}
+
+  @media(max-width:760px){
+    .hero,.tool,.final .wrap,.giftbox{grid-template-columns:1fr;}
+    .hero{text-align:center;}
+    .giftbox{text-align:center;}
+    .simple ul{columns:1;}
+    header .btn{display:none;}
+  }
+</style>
+
+<!-- Яндекс.Метрика -->
+<script>
+  (function(m,e,t,r,i,k,a){m[i]=m[i]||function(){(m[i].a=m[i].a||[]).push(arguments)};
+  m[i].l=1*new Date();
+  for (var j=0;j<document.scripts.length;j++){if(document.scripts[j].src===r){return;}}
+  k=e.createElement(t),a=e.getElementsByTagName(t)[0],k.async=1,k.src=r,a.parentNode.insertBefore(k,a)})
+  (window,document,'script','https://mc.yandex.ru/metrika/tag.js?id=112913596','ym');
+  ym(112913596,'init',{webvisor:true,clickmap:true,trackLinks:true,accurateTrackBounce:true});
+</script>
+<noscript><div><img src="https://mc.yandex.ru/watch/112913596" style="position:absolute;left:-9999px" alt=""></div></noscript>
+<!-- /Яндекс.Метрика -->
+</head>
+<body>
+
+<header>
+  <div class="wrap">
+    <a class="brand" href="#"><img src="img/logo.jpg" alt="">TazzyLab</a>
+    <a class="btn small" href="#contact">Попробовать бесплатно</a>
+  </div>
+</header>
+
+<!-- ПЕРВЫЙ ЭКРАН -->
+<div class="wrap hero">
+  <div>
+    <h1>TazzyLab — программа, которая делает за конструктора <span class="mark">рутину в SolidWorks</span></h1>
+    <p class="sub">Чертежи по ЕСКД, PDF и STEP проекта, развёртки на лазер, приём чужих моделей. Пять кнопок — пять готовых результатов.</p>
+    <a class="btn big" href="#contact">Попробовать 14 дней бесплатно</a>
+    <div class="note">Без карты. Ваши модели остаются нетронутыми.</div>
+  </div>
+  <div class="mascot-wrap"><img src="img/mascot.png" alt="Tazzy — талисман TazzyLab"></div>
+</div>
+
+<!-- ОКНО ПРОГРАММЫ -->
+<div class="wrap showcase">
+  <div class="win" aria-label="Окно программы TazzyLab">
+    <div class="win-bar"><span>TazzyLab</span><span>–□×</span></div>
+    <div class="win-head"><b>TazzyLab</b><small>вихрь точности для SolidWorks</small></div>
+    <div class="win-btn"><b>ЧЕРТЕЖИ ПО ЕСКД</b><span>текущая деталь или сборка → чертёж со штампом</span></div>
+    <div class="win-btn"><b>PDF ПРОЕКТА</b><span>все чертежи проекта → PDF одним пакетом</span></div>
+    <div class="win-btn"><b>STEP ПРОЕКТА</b><span>3D-модели всех деталей для поставщика</span></div>
+    <div class="win-btn"><b>DXF НА ЛАЗЕР</b><span>развёртки листовых деталей 1:1</span></div>
+    <div class="win-btn"><b>ПРИНЯТЬ МОДЕЛИ</b><span>STEP/IGES/Catia из папки → детали SolidWorks</span></div>
+    <div class="win-status">Готово. Результаты — по кнопке внизу.</div>
+<div class="win-log">--- [24/25] Кронштейн ---
+SLDDRW OK: Кронштейн.SLDDRW
+PDF OK: Кронштейн.pdf
+--- [25/25] Панель боковая ---
+SLDDRW OK: Панель боковая.SLDDRW
+PDF OK: Панель боковая.pdf
+СВОДКА: чертежей создано 25 | 2,0 мин</div>
+    <div class="win-foot"><span>Открыть папку результатов</span></div>
+  </div>
+  <p class="caption">Вся программа — одно окно и пять кнопок.</p>
+</div>
+
+<!-- БОЛЬ -->
+<section class="band">
+  <div class="wrap">
+    <h2>Конец проекта. Знакомо?</h2>
+    <p class="sub">Модели готовы, впереди самое «любимое»:</p>
+    <div class="cards">
+      <div class="card"><div class="num">30+</div>
+        <h3>чертежей</h3><p>рамка, виды, масштаб, штамп — на каждую
+        деталь, вручную, одну за другой</p></div>
+      <div class="card"><div class="num">60+</div>
+        <h3>«Сохранить как»</h3><p>STEP поставщику, PDF в архив:
+        открыть → сохранить → закрыть → повторить</p></div>
+      <div class="card"><div class="num">10+</div>
+        <h3>развёрток</h3><p>развернуть каждую листовую, выгрузить DXF,
+        не перепутать толщины</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- ЧТО ДЕЛАЕТ -->
+<section>
+  <div class="wrap">
+    <h2>Что делает TazzyLab</h2>
+
+    <div class="tool">
+      <div>
+        <h3>Чертежи на всю сборку</h3>
+        <p>Открыли сборку, нажали — на каждую деталь готов чертёж: рамка
+        вашего КБ, три вида и изометрия, масштаб по ГОСТ, штамп заполнен.
+        Остаётся проставить размеры.</p>
+        <div class="metric">25 чертежей — за 2 минуты</div>
+      </div>
+      <div class="visual">
+        <svg class="sheet" viewBox="0 0 210 297" role="img" aria-label="Схема листа чертежа">
+          <rect x="0" y="0" width="210" height="297" fill="#ffffff"/>
+          <g fill="none" stroke="#16264a" stroke-width="1">
+            <rect x="20" y="5" width="185" height="287"/>
+            <rect x="20" y="237" width="185" height="55"/>
+            <line x1="20" y1="252" x2="205" y2="252"/>
+            <line x1="20" y1="267" x2="205" y2="267"/>
+            <line x1="90" y1="237" x2="90" y2="292"/>
+            <line x1="140" y1="252" x2="140" y2="292"/>
+          </g>
+          <g fill="none" stroke="#16264a" stroke-width="1.6">
+            <rect x="38" y="150" width="70" height="42"/>
+            <circle cx="73" cy="171" r="8"/>
+            <rect x="38" y="112" width="70" height="22"/>
+            <rect x="124" y="150" width="22" height="42"/>
+            <path d="M140 40 L178 28 L196 42 L158 54 Z M140 40 L140 70 L158 84 L158 54 M158 84 L196 72 L196 42"/>
+          </g>
+          <g font-family="Segoe UI, sans-serif" font-size="7" fill="#16264a">
+            <text x="112" y="263">Кронштейн</text>
+            <text x="145" y="282">М 1:2</text>
+          </g>
+        </svg>
+        <div class="vcap">Схема листа, который получается</div>
+      </div>
+    </div>
+
+    <div class="tool">
+      <div>
+        <h3>Экспорт проекта</h3>
+        <p>Вся сборка в STEP и PDF одним запуском, с правильными
+        именами файлов — поставщику и в архив.</p>
+        <div class="metric">36 деталей — за 42 секунды</div>
+      </div>
+      <div class="visual">
+        <div class="files">
+<span class="dir">📁 Проект_рама</span><br>
+&nbsp;&nbsp;Кронштейн.step<br>
+&nbsp;&nbsp;Кронштейн.pdf<br>
+&nbsp;&nbsp;Панель боковая.step<br>
+&nbsp;&nbsp;Панель боковая.pdf<br>
+&nbsp;&nbsp;…
+        </div>
+      </div>
+    </div>
+
+    <div class="tool">
+      <div>
+        <h3>DXF на лазер</h3>
+        <p>Развёртки листовых деталей 1:1, толщина в имени файла,
+        раскладка по папкам толщин.</p>
+        <div class="metric">Без открытия чертежей</div>
+      </div>
+      <div class="visual">
+        <div class="files">
+<span class="dir">📁 s1,5</span><br>
+&nbsp;&nbsp;Развертка - Крышка_s1,5.dxf<br>
+<span class="dir">📁 s2</span><br>
+&nbsp;&nbsp;Развертка - Панель боковая_s2.dxf<br>
+&nbsp;&nbsp;Развертка - Кронштейн_s2.dxf<br>
+<span class="dir">📁 s3</span><br>
+&nbsp;&nbsp;Развертка - Основание_s3.dxf
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ПОДАРОК -->
+<section>
+  <div class="wrap">
+    <div class="giftbox">
+      <div>
+        <h3>Бесплатно: 309 моделей крепежа по ГОСТ</h3>
+        <p>Болты, гайки, шайбы, винты — 7 серий по ГОСТ, в формате STEP.
+        Открывается в SolidWorks, КОМПАС-3D, Inventor, Fusion 360, FreeCAD.
+        Официальный ГОСТ-каталог для Toolbox не пополняется с 2020 года —
+        вот вам замена, без регистрации и без условий.</p>
+        <div class="fine">8,5 МБ, .zip. Резьба упрощённая (как «simplified» в Toolbox) — для сборок и чертежей, не для станка с ЧПУ.</div>
+      </div>
+      <a class="btn big" style="margin-top:0" href="downloads/tazzylab-gost-krepezh.zip">Скачать бесплатно</a>
+    </div>
+  </div>
+</section>
+
+<!-- ПРОСТО РАБОТАЕТ -->
+<section class="band simple">
+  <div class="wrap">
+    <h2>Просто работает</h2>
+    <ul>
+      <li>Ничего не нужно настраивать</li>
+      <li>Ваши модели остаются нетронутыми — программа их только читает</li>
+      <li>Метизы и расходники сами остаются в стороне</li>
+      <li>Всё считается на вашем компьютере, файлы никуда не уходят</li>
+    </ul>
+    <p class="req">Нужно: Windows и SolidWorks 2024.</p>
+  </div>
+</section>
+
+<!-- ЦЕНА -->
+<section>
+  <div class="wrap">
+    <h2>Одна цена. Всё включено.</h2>
+    <div class="pricebox">
+      <div class="price">2 990 ₽<small> / год</small></div>
+      <p class="sub" style="margin:10px auto 0;max-width:46ch;">Меньше 250 ₽ в месяц.</p>
+      <ul>
+        <li>14 дней бесплатно</li>
+        <li>Все три инструмента и обновления в течение года</li>
+        <li>Первым 10 пользователям — первый год за 1 490 ₽</li>
+      </ul>
+      <a class="btn big" href="#contact">Попробовать 14 дней бесплатно</a>
+    </div>
+  </div>
+</section>
+
+<!-- ФИНАЛ -->
+<section class="band final" id="contact">
+  <div class="wrap">
+    <div>
+      <h2>Попробуйте первым</h2>
+      <p class="sub">Напишите — пришлём программу. Первые 14 дней она работает
+      бесплатно, а первым 10 пользователям первый год — за 1 490 ₽.</p>
+      <a class="btn big" href="mailto:mail@tazzylab.ru">mail@tazzylab.ru</a>
+      <p class="fine" style="margin-top:14px">Быстрее в Telegram — <a href="https://t.me/TazzyLab" target="_blank">@TazzyLab</a></p>
+    </div>
+    <div class="mascot-wrap"><img src="img/mascot.png" alt="Tazzy — талисман TazzyLab"></div>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap">
+    <div style="display:flex;align-items:center;gap:14px;">
+      <img src="img/logo.jpg" alt="TazzyLab">
+      <div><b>TazzyLab</b><p>Закрутил — и порядок.</p></div>
+    </div>
+    <p>Связь: <a href="mailto:mail@tazzylab.ru">mail@tazzylab.ru</a> · <a href="https://t.me/TazzyLab" target="_blank">@TazzyLab</a><br>© TazzyLab, 2026</p>
+  </div>
+</footer>
+
+
+<!-- Что считаем успехом: скачали крепёж, написали нам -->
+<script>
+(function(){
+  var СЧЁТЧИК = 112913596;
+  function цель(имя){ if (window.ym) { ym(СЧЁТЧИК, 'reachGoal', имя); } }
+  document.addEventListener('click', function(e){
+    var ссылка = e.target && e.target.closest ? e.target.closest('a') : null;
+    if (!ссылка) { return; }
+    var адрес = ссылка.getAttribute('href') || '';
+    if (адрес.indexOf('downloads/') === 0)   { цель('krepezh'); }
+    else if (адрес.indexOf('mailto:') === 0) { цель('pochta'); }
+    else if (адрес.indexOf('t.me/') > -1)    { цель('telegram'); }
+  });
+})();
+</script>
+</body>
+</html>
